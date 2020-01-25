@@ -1,0 +1,39 @@
+spring:
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:chat}?useSSL=${MYSQL_SSL:false}&zeroDateTimeBehavior=convertToNull&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:12345678}
+    testWhileIdle: true
+    validationQuery: SELECT 1
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        show_sql: false
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        implicit_naming_strategy: org.springframework.boot.orm.jpa.hibernate.SpringImplicitNamingStrategy
+        physical_naming_strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
+        id:
+          new_generator_mappings: false
+
+# Security configuration
+security:
+  jwt:
+    secret: ${JWT_SECRET:jwtSecret}
+    expirationTime: ${JWT_EXPIRATION_TIME:604800000} # 604_800_000 = 7 days
+    basicPrefix: ${BASSIC_PREFIX:Basic }
+    tokenPrefix: ${JWT_TOKEN_PREFIX:Bearer }
+    headerName: ${JWT_HEADER_NAME:Authorization}
+    signupURL: ${SIGNUP_URL:/api/users/signup}
+    loginURL: ${LOGIN_URL:/**}
+    roles: roles
+
+#  Logging configuration
+logging:
+  level:
+    org.hibernate: INFO
+    org.springframework: WARN
+    com.mihai.rsp_backen: DEBUG
