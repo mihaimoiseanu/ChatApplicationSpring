@@ -9,7 +9,6 @@ import com.coders.chat.persistence.user.User
 import com.coders.chat.persistence.user.UserRepository
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Service
-import java.sql.Timestamp
 import javax.transaction.Transactional
 
 @Service
@@ -26,7 +25,7 @@ open class MessageServiceBean(
     @Transactional
     override fun addMessage(messageDTO: MessageDTO, roomId: Long): MessageDTO {
         val room = roomRepository.getOne(roomId)
-        val sender = userRepository.getOne(messageDTO.sender?.id!!)
+        val sender = userRepository.getOne(messageDTO.senderId!!)
         val message = save(
                 Message(
                         message = messageDTO.message,
@@ -44,8 +43,9 @@ open class MessageServiceBean(
             MessageDTO(
                     id = message.id,
                     message = message.message,
-                    sender = fromEntity(message.sender!!),
-                    sentAt = message.sentAt
+                    senderId = message.sender?.id,
+                    sentAt = message.sentAt,
+                    roomId = message.room?.id
             )
 
     private fun fromEntity(user: User): UserDto {
