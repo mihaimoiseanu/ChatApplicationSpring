@@ -1,11 +1,11 @@
 package com.coders.chat.persistence.user
 
-import com.fasterxml.jackson.annotation.JsonIgnore
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.coders.chat.persistence.base.TimestampedEntity
 import com.coders.chat.persistence.message.Message
 import com.coders.chat.persistence.room.Room
 import com.coders.chat.persistence.room.user.RoomUser
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.annotation.JsonProperty
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.userdetails.UserDetails
@@ -14,6 +14,27 @@ import javax.persistence.*
 import javax.validation.constraints.Email
 import javax.validation.constraints.NotEmpty
 
+@NamedNativeQueries(
+        NamedNativeQuery(
+                name = "User.findUserFriends",
+                query = "select distinct id, created, updated, email, first_name, jwt_hash, last_name, pass from friendship " +
+                        "inner  join user u on friendship.user_one_id = u.id where user_two_id=?1 and status=1 " +
+                        "union " +
+                        "select distinct id, created, updated, email, first_name, jwt_hash, last_name, pass from friendship " +
+                        "inner join user u on friendship.user_two_id = u.id where user_one_id=?1 and status=1",
+                resultClass = User::class
+        ),
+        NamedNativeQuery(
+                name = "User.getAllUsers",
+                query = "select * from user where id not in (select distinct id from friendship inner join user u on friendship.user_one_id = u.id where user_two_id =?1 and status=2 and action_user_id<>?1 union select distinct id from friendship inner join  user u on friendship.user_two_id = u.id where user_one_id =?1 and status=2 and action_user_id<>?1) ",
+                resultClass = User::class
+        ),
+        NamedNativeQuery(
+                name = "User.searchUsers",
+                query = "select * from user where (email like ?2 or first_name like ?2 or last_name like ?2) and id not in (select distinct id from friendship inner join user u on friendship.user_one_id = u.id where user_two_id =?1 and status=2 and action_user_id<>?1 union select distinct id from friendship inner join  user u on friendship.user_two_id = u.id where user_one_id =?1 and status=2 and action_user_id<>?1) ",
+                resultClass = User::class
+        )
+)
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
 class User(
@@ -47,11 +68,11 @@ class User(
 
         @OneToMany(mappedBy = "createdBy", fetch = FetchType.LAZY, cascade = [CascadeType.ALL])
         @field:JsonIgnore
-        var createdRooms:Set<Room>? = null,
+        var createdRooms: Set<Room>? = null,
 
         @OneToMany(mappedBy = "user")
         @field:JsonIgnore
-        var roomUser:Set<RoomUser>?=null
+        var roomUser: Set<RoomUser>? = null
 
 ) : TimestampedEntity(), UserDetails {
 

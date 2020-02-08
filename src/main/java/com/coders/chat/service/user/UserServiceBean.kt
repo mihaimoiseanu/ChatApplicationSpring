@@ -1,20 +1,31 @@
 package com.coders.chat.service.user
 
+import com.coders.chat.model.exceptions.base.ApplicationException
+import com.coders.chat.model.friendship.FriendshipDTO
+import com.coders.chat.model.friendship.FriendshipStatus
+import com.coders.chat.model.user.UserDto
 import com.coders.chat.persistence.user.Role
 import com.coders.chat.persistence.user.User
 import com.coders.chat.persistence.user.UserRepository
+import com.coders.chat.persistence.user.friendship.Friendship
+import com.coders.chat.persistence.user.friendship.FriendshipKey
+import com.coders.chat.persistence.user.friendship.FriendshipRepository
+import com.coders.chat.service.principal.PrincipalService
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.security.InvalidParameterException
 import javax.annotation.PostConstruct
+import javax.transaction.Transactional
 import javax.validation.Valid
 
 @Service
 open class UserServiceBean(
-        val userRepository: UserRepository,
-        val passwordEncoder: PasswordEncoder
+        private val userRepository: UserRepository,
+        private val principalService: PrincipalService,
+        private val friendshipRepository: FriendshipRepository,
+        private val passwordEncoder: PasswordEncoder
 ) : UserService {
 
     @Transactional
@@ -27,7 +38,110 @@ open class UserServiceBean(
         return userRepository.save(userToRegister)
     }
 
+    override fun getUsers(searchTerm: String?): List<UserDto> {
+        val principal = principalService.getPrincipal()
+        if (searchTerm != null) {
+            val search = "%$searchTerm%"
+            return userRepository.searchUsers(principal.id!!, search).map { fromEntity(it) }
+        }
+        return userRepository.getAllUsers(principal.id!!).map { fromEntity(it) }
+    }
+
+    override fun getUserFriends(userId: Long): List<UserDto> {
+        return userRepository.findUserFriends(userId).map { fromEntity(it) }
+    }
+
+    @Transactional
+    override fun requestFriendship(friendshipDTO: FriendshipDTO): FriendshipDTO {
+        val principal = principalService.getPrincipal()
+        val friend = read(friendshipDTO.user.id!!)
+        if (principal == friend) {
+            throw ApplicationException.conflictException("Can't be friend with yourself")
+        }
+        val key = generateFriendshipKey(friend?.id!!)
+        friendshipRepository.findByIdOrNull(key)?.let {
+            return fromEntity(it, principal.id!!)
+        }
+        val friendship = friendshipRepository.save(Friendship(
+                userOne = principal,
+                userTwo = friend,
+                status = FriendshipStatus.PENDING,
+                actionUserId = principal.id
+        ))
+        return fromEntity(friendship, principal.id!!)
+    }
+
+    override fun getFriendship(userId: Long): FriendshipDTO {
+        val principal = principalService.getPrincipal()
+        val key = generateFriendshipKey(userId)
+        val friendship = friendshipRepository.getOne(key)
+        return fromEntity(friendship, principal.id!!)
+    }
+
+    override fun getFriendships(userId: Long, status: FriendshipStatus?): List<FriendshipDTO> {
+        status?.let {
+            if (FriendshipStatus.BLOCKED == status) {
+                //if we want to query for the blocked people we don't want to show the ones that blocked us
+                return friendshipRepository.getBlockedFriendships(userId).map { fr -> fromEntity(fr, userId) }
+            }
+            return friendshipRepository.getFriendships(userId, it).map { fr -> fromEntity(fr, userId) }
+        }
+        return friendshipRepository.getFriendships(userId).map { fromEntity(it, userId) }
+    }
+
+    @Transactional
+    override fun handlePendingStatus(friendshipDTO: FriendshipDTO): FriendshipDTO {
+        throw ApplicationException.conflictException("You can't update an existing invite to pending ")
+    }
+
+    @Transactional
+    override fun handleAcceptedStatus(friendshipDTO: FriendshipDTO): FriendshipDTO {
+        val principal = principalService.getPrincipal()
+        val key = generateFriendshipKey(friendshipDTO.user.id!!)
+        val friendship = friendshipRepository.getOne(key)
+
+        if (FriendshipStatus.BLOCKED == friendship.status && friendship.actionUserId != principal.id) {
+            throw ApplicationException.conflictException("You can't unblock yourself")
+        }
+
+        if (FriendshipStatus.PENDING == friendship.status && friendship.actionUserId == principal.id) {
+            throw ApplicationException.conflictException("You can't accept this invitation")
+        }
+        friendship.actionUserId = principal.id
+        friendship.status = friendshipDTO.status
+        val updatedFriendship = friendshipRepository.save(friendship)
+        return fromEntity(updatedFriendship, principal.id!!)
+    }
+
+    @Transactional
+    override fun handleBlockedStatus(friendshipDTO: FriendshipDTO): FriendshipDTO {
+        val principal = principalService.getPrincipal()
+        val key = generateFriendshipKey(friendshipDTO.user.id!!)
+        val friendship = friendshipRepository.getOne(key)
+
+        if (FriendshipStatus.PENDING == friendship.status && friendship.actionUserId == principal.id) {
+            throw ApplicationException.conflictException("You are not friend with this user, so why block?!")
+        }
+        friendship.actionUserId = principal.id
+        friendship.status = friendshipDTO.status
+        val updatedFriendship = friendshipRepository.save(friendship)
+        return fromEntity(updatedFriendship, principal.id!!)
+    }
+
+    @Transactional
+    override fun deleteFriendship(userId: Long) {
+        val key = generateFriendshipKey(userId)
+        friendshipRepository.deleteById(key)
+    }
+
     override fun getEntityRepository(): JpaRepository<User, Long> = userRepository
+
+    private fun generateFriendshipKey(otherUserId: Long): FriendshipKey {
+        val principal = principalService.getPrincipal()
+        val firstKey = if (principal.id!! < otherUserId) principal.id else otherUserId
+        val secondKey = if (principal.id!! > otherUserId) principal.id else otherUserId
+        return FriendshipKey(firstKey, secondKey)
+    }
 
     @PostConstruct
     @Transactional
@@ -44,4 +158,20 @@ open class UserServiceBean(
                 ?: signUp(user)
         println("admin created")
     }
+
+    private fun fromEntity(user: User): UserDto {
+        return UserDto(
+                id = user.id,
+                firstName = user.firstName,
+                lastName = user.lastName,
+                email = user.email
+        )
+    }
+
+    private fun fromEntity(friendship: Friendship, loggedUserId: Long) = FriendshipDTO(
+            user = fromEntity(
+                    if (loggedUserId == friendship.userOne?.id) friendship.userTwo!! else friendship.userOne!!
+            ),
+            status = friendship.status!!
+    )
 }

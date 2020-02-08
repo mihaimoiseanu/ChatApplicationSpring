@@ -74,7 +74,7 @@ open class RoomServiceBean(
     }
 
     private fun fromEntity(room: Room): RoomDTO {
-        val users = room.roomUsers?.map { roomUser -> roomUser.user }?.map { user -> user?.id ?: -1 }
+        val users = room.roomUsers?.map { roomUser -> roomUser.user }?.map { user -> fromEntity(user!!) } ?: emptyList()
         return RoomDTO(
                 id = room.id,
                 name = room.name,
