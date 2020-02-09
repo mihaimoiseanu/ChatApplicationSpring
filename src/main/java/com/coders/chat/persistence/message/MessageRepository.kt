@@ -7,4 +7,6 @@ interface MessageRepository : JpaRepository<Message, Long> {
     fun findAllByRoomId(roomId: Long): List<Message>
 
     fun findAllBySenderId(senderId: Long): List<Message>
+
+    fun findFirstByRoomIdOrderBySentAtDesc(roomId: Long): Message
 }

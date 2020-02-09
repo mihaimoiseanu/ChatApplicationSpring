@@ -1,11 +1,9 @@
 package com.coders.chat.service.message
 
 import com.coders.chat.model.message.MessageDTO
-import com.coders.chat.model.user.UserDto
 import com.coders.chat.persistence.message.Message
 import com.coders.chat.persistence.message.MessageRepository
 import com.coders.chat.persistence.room.RoomRepository
-import com.coders.chat.persistence.user.User
 import com.coders.chat.persistence.user.UserRepository
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Service
@@ -47,13 +45,4 @@ open class MessageServiceBean(
                     sentAt = message.sentAt,
                     roomId = message.room?.id
             )
-
-    private fun fromEntity(user: User): UserDto {
-        return UserDto(
-                id = user.id,
-                firstName = user.firstName,
-                lastName = user.lastName,
-                email = user.email
-        )
-    }
 }

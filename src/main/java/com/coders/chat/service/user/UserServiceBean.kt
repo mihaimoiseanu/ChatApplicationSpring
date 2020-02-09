@@ -11,6 +11,7 @@ import com.coders.chat.persistence.user.friendship.Friendship
 import com.coders.chat.persistence.user.friendship.FriendshipKey
 import com.coders.chat.persistence.user.friendship.FriendshipRepository
 import com.coders.chat.service.principal.PrincipalService
+import com.coders.chat.service.room.RoomService
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -25,6 +26,7 @@ open class UserServiceBean(
         private val userRepository: UserRepository,
         private val principalService: PrincipalService,
         private val friendshipRepository: FriendshipRepository,
+        private val roomService: RoomService,
         private val passwordEncoder: PasswordEncoder
 ) : UserService {
 
@@ -42,9 +44,9 @@ open class UserServiceBean(
         val principal = principalService.getPrincipal()
         if (searchTerm != null) {
             val search = "%$searchTerm%"
-            return userRepository.searchUsers(principal.id!!, search).map { fromEntity(it) }
+            return userRepository.searchUsers(principal.id!!, search).filter { it.id != principal.id }.map { fromEntity(it) }
         }
-        return userRepository.getAllUsers(principal.id!!).map { fromEntity(it) }
+        return userRepository.getAllUsers(principal.id!!).filter { it.id != principal.id }.map { fromEntity(it) }
     }
 
     override fun getUserFriends(userId: Long): List<UserDto> {
@@ -110,6 +112,7 @@ open class UserServiceBean(
         friendship.actionUserId = principal.id
         friendship.status = friendshipDTO.status
         val updatedFriendship = friendshipRepository.save(friendship)
+        roomService.createRoom(listOf(updatedFriendship.userOne?.id!!, updatedFriendship.userTwo?.id!!))
         return fromEntity(updatedFriendship, principal.id!!)
     }
 

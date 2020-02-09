@@ -2,7 +2,6 @@ package com.coders.chat.persistence.user
 
 import com.coders.chat.persistence.base.TimestampedEntity
 import com.coders.chat.persistence.message.Message
-import com.coders.chat.persistence.room.Room
 import com.coders.chat.persistence.room.user.RoomUser
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonProperty
@@ -65,10 +64,6 @@ class User(
         @OneToMany(mappedBy = "sender", fetch = FetchType.LAZY, cascade = [CascadeType.ALL])
         @field:JsonIgnore
         var message: Set<Message>? = null,
-
-        @OneToMany(mappedBy = "createdBy", fetch = FetchType.LAZY, cascade = [CascadeType.ALL])
-        @field:JsonIgnore
-        var createdRooms: Set<Room>? = null,
 
         @OneToMany(mappedBy = "user")
         @field:JsonIgnore

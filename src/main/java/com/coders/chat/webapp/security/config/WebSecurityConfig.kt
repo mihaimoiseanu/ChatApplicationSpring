@@ -29,9 +29,6 @@ open class WebSecurityConfig(private val userDetailsService: CustomUserDetailsSe
     override fun configure(http: HttpSecurity) {
         http.authorizeRequests()
                 .antMatchers(HttpMethod.POST, securityConfiguration.signupURL).permitAll()
-                .antMatchers(HttpMethod.GET, "/api/events", "/api/events/*", "/api/events/*/*", "/api/events/*/*/*").permitAll()
-                .antMatchers(HttpMethod.GET, "/api/cases", "/api/cases/*", "/api/cases/*/*/*", "/api/cases/*/*/*").permitAll()
-                .antMatchers(HttpMethod.POST, "/api/social/signup").permitAll()
                 .antMatchers(HttpMethod.GET, "/v2/api-docs", "/configuration/ui", "/swagger-resources/**", "/configuration/auth", "/swagger-ui.html", "/webjars/**").permitAll()
                 .anyRequest().authenticated()
                 .and()

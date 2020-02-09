@@ -39,9 +39,9 @@ class UserApi(
         return userService.getFriendships(principal.id!!, friendshipStatus)
     }
 
-    @GetMapping(value = ["/friendships/{id}"])
-    fun getFriendship(@PathVariable("id") friendshipId: Long): FriendshipDTO {
-        return userService.getFriendship(friendshipId)
+    @GetMapping(value = ["/friendships/{other_user_id}"])
+    fun getFriendship(@PathVariable(value = "other_user_id") otherUserId: Long): FriendshipDTO {
+        return userService.getFriendship(otherUserId)
     }
 
     @PostMapping(value = ["/friendships"])
@@ -57,9 +57,9 @@ class UserApi(
         }
     }
 
-    @DeleteMapping(value = ["/friendships/{id}"])
-    fun deleteFriendship(@PathVariable(name = "id") friendshipId: Long) {
-        userService.deleteFriendship(friendshipId)
+    @DeleteMapping(value = ["/friendships"])
+    fun deleteFriendship(@RequestParam(value = "other_user_id") otherUserId: Long) {
+        userService.deleteFriendship(otherUserId)
     }
 
     @GetMapping(value = ["/{id}/friends"])
