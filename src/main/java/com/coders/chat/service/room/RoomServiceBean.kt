@@ -1,5 +1,7 @@
 package com.coders.chat.service.room
 
+import com.coders.chat.model.event.Event
+import com.coders.chat.model.event.EventType
 import com.coders.chat.model.exceptions.base.ApplicationException
 import com.coders.chat.model.room.RoomDTO
 import com.coders.chat.model.user.UserDto
@@ -12,6 +14,7 @@ import com.coders.chat.persistence.user.User
 import com.coders.chat.persistence.user.UserRepository
 import com.coders.chat.service.principal.PrincipalService
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.stereotype.Service
 import javax.transaction.Transactional
 
@@ -21,7 +24,8 @@ open class RoomServiceBean(
         private val roomUserRepository: RoomUserRepository,
         private val principalService: PrincipalService,
         private val userRepository: UserRepository,
-        private val messageRepository: MessageRepository
+        private val messageRepository: MessageRepository,
+        private val simpMessagingTemplate: SimpMessagingTemplate
 ) : RoomService {
 
     override fun getMyRooms(): List<RoomDTO> {
@@ -41,6 +45,14 @@ open class RoomServiceBean(
                             room = savedRoom,
                             user = user
                     )
+            )
+        }
+        val response = fromEntity(savedRoom)
+        response.users?.forEach {
+            simpMessagingTemplate.convertAndSend(
+                    "/events-replay/${it.id}",
+                    Event(EventType.ROOM_CREATED,
+                            response)
             )
         }
         return fromEntity(savedRoom)
@@ -76,7 +88,7 @@ open class RoomServiceBean(
                 id = room.id,
                 name = room.name,
                 users = users,
-                lastMessageId = lastMessage.id
+                lastMessageId = lastMessage?.id
         )
     }
 }

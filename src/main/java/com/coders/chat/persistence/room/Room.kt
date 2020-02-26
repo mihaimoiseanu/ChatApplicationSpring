@@ -14,6 +14,6 @@ class Room(
         var messages: Set<Message>? = null,
 
         @OneToMany(mappedBy = "room")
-        var roomUsers: Set<RoomUser>? = null
+        var roomUsers: MutableSet<RoomUser>? = null
 
 ) : TimestampedEntity()

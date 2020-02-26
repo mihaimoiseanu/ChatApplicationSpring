@@ -1,6 +1,5 @@
 package com.coders.chat.webapp.security.socket
 
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.simp.config.MessageBrokerRegistry
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker
@@ -13,8 +12,8 @@ open class WebSocketConfig: WebSocketMessageBrokerConfigurer{
 
     override fun configureMessageBroker(registry: MessageBrokerRegistry) {
         registry
-                .setApplicationDestinationPrefixes("/chat")
-                .enableSimpleBroker("/chat-replay/")
+                .setApplicationDestinationPrefixes("/events")
+                .enableSimpleBroker("/events-replay")
     }
 
     override fun registerStompEndpoints(registry: StompEndpointRegistry) {

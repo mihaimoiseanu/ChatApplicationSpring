@@ -10,5 +10,5 @@ interface MessageService : CrudService<Message, Long> {
     fun getAllForRoom(roomId:Long):List<MessageDTO>
 
     @Transactional
-    fun addMessage(messageDTO: MessageDTO, roomId: Long) : MessageDTO
+    fun addMessage(messageDTO: MessageDTO): MessageDTO
 }

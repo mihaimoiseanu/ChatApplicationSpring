@@ -54,6 +54,7 @@ class UserApi(
             FriendshipStatus.PENDING -> userService.handlePendingStatus(friendshipDTO)
             FriendshipStatus.ACCEPTED -> userService.handleAcceptedStatus(friendshipDTO)
             FriendshipStatus.BLOCKED -> userService.handleBlockedStatus(friendshipDTO)
+            FriendshipStatus.NONE -> TODO("Maybe delete it?")
         }
     }
 
