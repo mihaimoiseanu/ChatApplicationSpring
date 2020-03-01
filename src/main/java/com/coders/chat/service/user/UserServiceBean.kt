@@ -58,13 +58,13 @@ open class UserServiceBean(
     }
 
     @Transactional
-    override fun requestFriendship(friendshipDTO: FriendshipDTO): FriendshipDTO {
-        val principal = principalService.getPrincipal()
-        val friend = read(friendshipDTO.user.id!!)
+    override fun requestFriendship(friendshipDTO: FriendshipDTO, principalId: Long): FriendshipDTO {
+        val principal = read(principalId)!!
+        val friend = read(friendshipDTO.user!!.id!!)
         if (principal == friend) {
             throw ApplicationException.conflictException("Can't be friend with yourself")
         }
-        val key = generateFriendshipKey(friend?.id!!)
+        val key = generateFriendshipKey(friend?.id!!, principal.id!!)
         friendshipRepository.findByIdOrNull(key)?.let {
             return fromEntity(it, principal.id!!)
         }
@@ -79,8 +79,8 @@ open class UserServiceBean(
         return fromEntity(friendship, principal.id!!)
     }
 
-    override fun getFriendship(userId: Long): FriendshipDTO {
-        val key = generateFriendshipKey(userId)
+    override fun getFriendship(userId: Long, principalId: Long): FriendshipDTO {
+        val key = generateFriendshipKey(userId, principalId)
         val friendship = friendshipRepository.findByIdOrNull(key)
         val otherUser = userRepository.getOne(userId)
         return fromEntity(friendship, otherUser)
@@ -98,14 +98,14 @@ open class UserServiceBean(
     }
 
     @Transactional
-    override fun handlePendingStatus(friendshipDTO: FriendshipDTO): FriendshipDTO {
+    override fun handlePendingStatus(friendshipDTO: FriendshipDTO, principalId: Long): FriendshipDTO {
         throw ApplicationException.conflictException("You can't update an existing invite to pending ")
     }
 
     @Transactional
-    override fun handleAcceptedStatus(friendshipDTO: FriendshipDTO): FriendshipDTO {
-        val principal = principalService.getPrincipal()
-        val key = generateFriendshipKey(friendshipDTO.user.id!!)
+    override fun handleAcceptedStatus(friendshipDTO: FriendshipDTO, principalId: Long): FriendshipDTO {
+        val principal = read(principalId)!!
+        val key = generateFriendshipKey(friendshipDTO.user!!.id!!, principal.id!!)
         val friendship = friendshipRepository.getOne(key)
 
         if (FriendshipStatus.BLOCKED == friendship.status && friendship.actionUserId != principal.id) {
@@ -125,9 +125,9 @@ open class UserServiceBean(
     }
 
     @Transactional
-    override fun handleBlockedStatus(friendshipDTO: FriendshipDTO): FriendshipDTO {
-        val principal = principalService.getPrincipal()
-        val key = generateFriendshipKey(friendshipDTO.user.id!!)
+    override fun handleBlockedStatus(friendshipDTO: FriendshipDTO, principalId: Long): FriendshipDTO {
+        val principal = read(principalId)!!
+        val key = generateFriendshipKey(friendshipDTO.user!!.id!!, principal.id!!)
         val friendship = friendshipRepository.getOne(key)
 
         if (FriendshipStatus.PENDING == friendship.status && friendship.actionUserId == principal.id) {
@@ -142,9 +142,9 @@ open class UserServiceBean(
     }
 
     @Transactional
-    override fun deleteFriendship(userId: Long) {
-        val key = generateFriendshipKey(userId)
-        val principal = principalService.getPrincipal()
+    override fun deleteFriendship(userId: Long, principalId: Long) {
+        val principal = read(principalId)!!
+        val key = generateFriendshipKey(userId, principal.id!!)
         friendshipRepository.deleteById(key)
         val event = Event(EventType.FRIENDSHIP_UPDATED, FriendshipDTO(fromEntity(principal), FriendshipStatus.PENDING, principal.id))
         simp.convertAndSend("/events-replay/${userId}", event)
@@ -152,10 +152,9 @@ open class UserServiceBean(
 
     override fun getEntityRepository(): JpaRepository<User, Long> = userRepository
 
-    private fun generateFriendshipKey(otherUserId: Long): FriendshipKey {
-        val principal = principalService.getPrincipal()
-        val firstKey = if (principal.id!! < otherUserId) principal.id else otherUserId
-        val secondKey = if (principal.id!! > otherUserId) principal.id else otherUserId
+    private fun generateFriendshipKey(otherUserId: Long, principalId: Long): FriendshipKey {
+        val firstKey = if (principalId < otherUserId) principalId else otherUserId
+        val secondKey = if (principalId > otherUserId) principalId else otherUserId
         return FriendshipKey(firstKey, secondKey)
     }
 

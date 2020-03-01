@@ -1,5 +1,6 @@
 package com.coders.chat.webapp.api.user
 
+import com.coders.chat.model.exceptions.base.ApplicationException
 import com.coders.chat.model.friendship.FriendshipDTO
 import com.coders.chat.model.friendship.FriendshipStatus
 import com.coders.chat.model.user.UserDto
@@ -41,26 +42,36 @@ class UserApi(
 
     @GetMapping(value = ["/friendships/{other_user_id}"])
     fun getFriendship(@PathVariable(value = "other_user_id") otherUserId: Long): FriendshipDTO {
-        return userService.getFriendship(otherUserId)
+        val principalId = principalService.getPrincipal().id!!
+        return userService.getFriendship(otherUserId, principalId)
     }
 
     @PostMapping(value = ["/friendships"])
-    fun requestFriendship(@RequestBody friendshipDTO: FriendshipDTO) =
-            userService.requestFriendship(friendshipDTO)
+    fun requestFriendship(@RequestBody friendshipDTO: FriendshipDTO): FriendshipDTO {
+        val principal = principalService.getPrincipal().id!!
+        return userService.requestFriendship(friendshipDTO, principal)
+    }
 
     @PutMapping(value = ["/friendships"])
     fun updateFriendship(@RequestBody friendshipDTO: FriendshipDTO): FriendshipDTO {
+        val principal = principalService.getPrincipal().id!!
+        if (principal == friendshipDTO.user?.id) {
+            throw ApplicationException.conflictException("Can't be friend with yourself")
+        }
         return when (friendshipDTO.status) {
-            FriendshipStatus.PENDING -> userService.handlePendingStatus(friendshipDTO)
-            FriendshipStatus.ACCEPTED -> userService.handleAcceptedStatus(friendshipDTO)
-            FriendshipStatus.BLOCKED -> userService.handleBlockedStatus(friendshipDTO)
-            FriendshipStatus.NONE -> TODO("Maybe delete it?")
+            FriendshipStatus.PENDING -> userService.handlePendingStatus(friendshipDTO, principal)
+            FriendshipStatus.ACCEPTED -> userService.handleAcceptedStatus(friendshipDTO, principal)
+            FriendshipStatus.BLOCKED -> userService.handleBlockedStatus(friendshipDTO, principal)
+            else -> {
+                friendshipDTO
+            }
         }
     }
 
     @DeleteMapping(value = ["/friendships"])
     fun deleteFriendship(@RequestParam(value = "other_user_id") otherUserId: Long) {
-        userService.deleteFriendship(otherUserId)
+        val principal = principalService.getPrincipal().id!!
+        userService.deleteFriendship(otherUserId, principal)
     }
 
     @GetMapping(value = ["/{id}/friends"])

@@ -7,7 +7,6 @@ import com.coders.chat.model.friendship.FriendshipStatus
 import com.coders.chat.model.message.MessageDTO
 import com.coders.chat.model.room.RoomDTO
 import com.coders.chat.service.message.MessageService
-import com.coders.chat.service.principal.PrincipalService
 import com.coders.chat.service.room.RoomService
 import com.coders.chat.service.user.UserService
 import com.coders.chat.service.user.UserServiceBean
@@ -19,34 +18,35 @@ class EventServiceBean(
         private val userService: UserService,
         private val roomService: RoomService,
         private val messageService: MessageService,
-        private val principalService: PrincipalService,
         private val simp: SimpMessagingTemplate
 ) : EventService {
 
-    override fun handleFriendshipEvent(event: Event<FriendshipDTO>) {
+    override fun handleFriendshipEvent(event: Event<FriendshipDTO>, principalId: Long) {
         val friendshipDTO = event.eventDTO
         var friendshipUpdated: FriendshipDTO = friendshipDTO!!
         when (event.type) {
             EventType.FRIENDSHIP_CREATED -> {
-                friendshipUpdated = userService.requestFriendship(friendshipDTO)
+                friendshipUpdated = userService.requestFriendship(friendshipDTO, principalId)
             }
             EventType.FRIENDSHIP_UPDATED -> {
                 friendshipUpdated = when (friendshipDTO.status) {
-                    FriendshipStatus.PENDING -> userService.handlePendingStatus(friendshipDTO)
-                    FriendshipStatus.ACCEPTED -> userService.handleAcceptedStatus(friendshipDTO)
-                    FriendshipStatus.BLOCKED -> userService.handleBlockedStatus(friendshipDTO)
-                    FriendshipStatus.NONE -> TODO("Maybe delete it?")
+                    FriendshipStatus.PENDING -> userService.handlePendingStatus(friendshipDTO, principalId)
+                    FriendshipStatus.ACCEPTED -> userService.handleAcceptedStatus(friendshipDTO, principalId)
+                    FriendshipStatus.BLOCKED -> userService.handleBlockedStatus(friendshipDTO, principalId)
+                    else -> { /* do nothing */
+                        friendshipDTO
+                    }
                 }
             }
             EventType.FRIENDSHIP_DELETED -> {
-                userService.deleteFriendship(friendshipDTO.user.id!!)
+                userService.deleteFriendship(friendshipDTO.user!!.id!!, principalId)
             }
             else -> { /* do nothing */
             }
         }
-        val principal = principalService.getPrincipal()
-        simp.convertAndSend("/events-replay/${principal.id}", Event(event.type, friendshipUpdated))
-        val otherUserId = friendshipDTO.user.id
+        simp.convertAndSend("/events-replay/${principalId}", Event(event.type, friendshipUpdated))
+        val otherUserId = friendshipDTO.user!!.id
+        val principal = userService.read(principalId)!!
         simp.convertAndSend("/events-replay/$otherUserId",
                 Event(
                         event.type,

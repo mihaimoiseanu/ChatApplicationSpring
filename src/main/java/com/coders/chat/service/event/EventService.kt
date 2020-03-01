@@ -6,7 +6,7 @@ import com.coders.chat.model.message.MessageDTO
 import com.coders.chat.model.room.RoomDTO
 
 interface EventService {
-    fun handleFriendshipEvent(event: Event<FriendshipDTO>)
+    fun handleFriendshipEvent(event: Event<FriendshipDTO>, principalId: Long)
     fun handleRoomEvent(event: Event<RoomDTO>)
     fun handleMessageEvent(event: Event<MessageDTO>)
 }

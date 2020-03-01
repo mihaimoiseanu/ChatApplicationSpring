@@ -15,24 +15,24 @@ interface UserService : CrudService<User, Long> {
 
     fun getUserFriends(userId: Long): List<UserDto>
 
-    fun getFriendship(userId: Long): FriendshipDTO
+    fun getFriendship(userId: Long, principalId: Long): FriendshipDTO
 
     fun getFriendships(userId: Long, status: FriendshipStatus?): List<FriendshipDTO>
 
     @Transactional
-    fun requestFriendship(friendshipDTO: FriendshipDTO): FriendshipDTO
+    fun requestFriendship(friendshipDTO: FriendshipDTO, principalId: Long): FriendshipDTO
 
     @Transactional
-    fun handlePendingStatus(friendshipDTO: FriendshipDTO): FriendshipDTO
+    fun handlePendingStatus(friendshipDTO: FriendshipDTO, principalId: Long): FriendshipDTO
 
     @Transactional
-    fun handleAcceptedStatus(friendshipDTO: FriendshipDTO): FriendshipDTO
+    fun handleAcceptedStatus(friendshipDTO: FriendshipDTO, principalId: Long): FriendshipDTO
 
     @Transactional
-    fun handleBlockedStatus(friendshipDTO: FriendshipDTO): FriendshipDTO
+    fun handleBlockedStatus(friendshipDTO: FriendshipDTO, principalId: Long): FriendshipDTO
 
     @Transactional
-    fun deleteFriendship(userId: Long)
+    fun deleteFriendship(userId: Long, principalId: Long)
 
     fun getUsers(searchTerm: String?): List<UserDto>
 

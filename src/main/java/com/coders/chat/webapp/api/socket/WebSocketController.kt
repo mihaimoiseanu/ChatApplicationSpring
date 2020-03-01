@@ -8,7 +8,6 @@ import com.coders.chat.model.message.MessageDTO
 import com.coders.chat.model.room.RoomDTO
 import com.coders.chat.persistence.user.User
 import com.coders.chat.service.event.EventService
-import com.coders.chat.service.principal.PrincipalService
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.Logger
@@ -25,8 +24,7 @@ import org.springframework.stereotype.Controller
 @Controller
 class WebSocketController
 @Autowired constructor(
-        private val eventService: EventService,
-        private val principalService: PrincipalService) {
+        private val eventService: EventService) {
 
     private val logger: Logger =
             LoggerFactory.getLogger(WebSocketController::class.java.simpleName)
@@ -38,8 +36,8 @@ class WebSocketController
             @Payload message: String?,
             headerAccessor: SimpMessageHeaderAccessor) {
         logger.debug(message)
-        val principalId = ((headerAccessor.messageHeaders["simpUser"] as UsernamePasswordAuthenticationToken).principal as User).id
-        if (senderId != principalId) {
+        val principal = ((headerAccessor.messageHeaders["simpUser"] as UsernamePasswordAuthenticationToken).principal as User)
+        if (senderId != principal.id) {
             throw ApplicationException.conflictException("You can't send events for other user except yourself")
         }
         when (EventType.valueOf(ObjectMapper().readTree(message).get("type").asText())) {
@@ -47,7 +45,7 @@ class WebSocketController
             EventType.FRIENDSHIP_UPDATED,
             EventType.FRIENDSHIP_DELETED -> {
                 val event = ObjectMapper().readValue(message, object : TypeReference<Event<FriendshipDTO>>() {})
-                eventService.handleFriendshipEvent(event)
+                eventService.handleFriendshipEvent(event, principal.id!!)
             }
             EventType.ROOM_CREATED,
             EventType.ROOM_UPDATED,
